@@ -181,15 +181,21 @@ export function reminderEmail(d: {
   meetingProvider?: string;
   whatsappGroupLink?: string;
 }) {
-  const soon = d.hoursBefore <= 3;
+  // Phrase the timing from how long is ACTUALLY left, not from the configured
+  // offset. A student who books two hours before the batch starts triggers the
+  // 24h reminder immediately, and "starts tomorrow" would be plainly wrong.
+  const hoursLeft = (d.startDate.getTime() - Date.now()) / 3_600_000;
+  const soon = hoursLeft <= 3;
   const whenPhrase =
-    d.hoursBefore <= 1
-      ? "in about an hour"
-      : d.hoursBefore < 24
-        ? `in about ${d.hoursBefore} hours`
-        : d.hoursBefore === 24
-          ? "tomorrow"
-          : `on ${formatDate(d.startDate)}`;
+    hoursLeft <= 0
+      ? "right now"
+      : hoursLeft < 1.5
+        ? "in about an hour"
+        : hoursLeft < 20
+          ? `in about ${Math.round(hoursLeft)} hours`
+          : hoursLeft < 36
+            ? "tomorrow"
+            : `on ${formatDate(d.startDate)}`;
 
   const providerName =
     d.meetingProvider === "GOOGLE_MEET"
