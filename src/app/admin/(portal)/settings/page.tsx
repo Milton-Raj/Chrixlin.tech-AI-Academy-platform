@@ -23,6 +23,60 @@ interface SystemStatus {
   payments: { live: boolean };
   cron: { secretSet: boolean; lastRunAt: string | null; healthy: boolean; endpoint: string };
   appUrl: { value: string; looksLocal: boolean };
+  emailFrom: string;
+}
+
+/** Fires a real email through Resend so delivery can be verified in one click. */
+function TestEmailForm() {
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ status: string; error?: string | null } | null>(null);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setResult(null);
+    const res = await fetch("/api/admin/system/test-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to }),
+    });
+    setResult(await res.json());
+    setBusy(false);
+  }
+
+  return (
+    <form onSubmit={send} className="mt-4 rounded-xl bg-navy p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted">Send a test email</div>
+      <div className="mt-2 flex gap-2">
+        <input
+          className="input flex-1"
+          type="email"
+          required
+          placeholder="you@gmail.com"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+        <button className="btn-cta !px-4 !py-2 text-sm" disabled={busy}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />} Send Test
+        </button>
+      </div>
+      {result &&
+        (result.status === "SENT" ? (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-green-400">
+            <CheckCircle2 size={13} /> Sent — check the inbox (and spam folder on first send).
+          </p>
+        ) : result.status === "SKIPPED_NO_KEY" ? (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
+            <AlertTriangle size={13} /> No RESEND_API_KEY set — the email was logged, not sent.
+          </p>
+        ) : (
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-red-400">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" /> Failed: {result.error ?? "unknown error"}
+          </p>
+        ))}
+    </form>
+  );
 }
 
 interface Field {
@@ -304,7 +358,7 @@ export default function SettingsPage() {
             label="Email delivery"
             detail={
               status.email.configured
-                ? `Resend connected — ${status.email.sent} sent, ${status.email.failed} failed.`
+                ? `Resend connected, sending as ${status.emailFrom} — ${status.email.sent} sent, ${status.email.failed} failed.`
                 : `Not connected — ${status.email.logged} email(s) recorded but never delivered.`
             }
             warning="Set RESEND_API_KEY in Vercel. Until then, no student receives anything — welcome emails, reminders and certificates are only written to the log."
@@ -345,6 +399,8 @@ export default function SettingsPage() {
             />
           )}
         </div>
+
+        <TestEmailForm />
 
         <div className="mt-5 rounded-xl bg-navy p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted">

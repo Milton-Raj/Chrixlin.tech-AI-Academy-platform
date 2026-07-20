@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { appUrl } from "@/lib/urls";
 
 /**
  * Read-only health check for the Settings screen: which integrations are wired
@@ -13,7 +14,7 @@ export async function GET() {
   const emailConfigured = Boolean(process.env.RESEND_API_KEY);
   const paymentsLive = Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
   const cronSecretSet = Boolean(process.env.CRON_SECRET);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const baseUrl = appUrl();
 
   const lastRun = settings.cronLastRunAt ? new Date(settings.cronLastRunAt) : null;
   const hoursSinceRun = lastRun ? (Date.now() - lastRun.getTime()) / 3_600_000 : null;
@@ -36,11 +37,12 @@ export async function GET() {
       secretSet: cronSecretSet,
       lastRunAt: lastRun?.toISOString() ?? null,
       healthy: hoursSinceRun !== null && hoursSinceRun < 3,
-      endpoint: `${appUrl}/api/cron/emails`,
+      endpoint: `${baseUrl}/api/cron/emails`,
     },
     appUrl: {
-      value: appUrl,
-      looksLocal: appUrl.includes("localhost"),
+      value: baseUrl,
+      looksLocal: baseUrl.includes("localhost"),
     },
+    emailFrom: process.env.EMAIL_FROM ?? "Chrixlin.tech Academy <noreply@chrixlin.tech>",
   });
 }

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
 import { formatDate, formatDateTime, inr } from "@/lib/format";
+import { appUrl } from "@/lib/urls";
 
 /**
  * Email automation (spec: EMAIL AUTOMATION).
@@ -10,7 +11,9 @@ import { formatDate, formatDateTime, inr } from "@/lib/format";
  * endpoint also uses EmailLog to avoid sending duplicates.
  */
 
-const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+// Automation sender: a no-reply address. The mailbox deliberately does not
+// exist, so student replies bounce instead of landing anywhere.
+const FROM_FALLBACK = "Chrixlin.tech Academy <noreply@chrixlin.tech>";
 
 export async function sendEmail(opts: {
   to: string;
@@ -27,7 +30,7 @@ export async function sendEmail(opts: {
     try {
       const resend = new Resend(apiKey);
       const result = await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? "Chrixlin.tech <onboarding@resend.dev>",
+        from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
         to: opts.to,
         subject: opts.subject,
         html: opts.html,

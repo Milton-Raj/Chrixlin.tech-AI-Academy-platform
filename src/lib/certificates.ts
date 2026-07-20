@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "@/lib/db";
 import { certificateEmail, sendEmail } from "@/lib/email";
 import { formatDate } from "@/lib/format";
+import { appUrl } from "@/lib/urls";
 
 /**
  * Certificate automation (spec: CERTIFICATE AUTOMATION).
@@ -186,7 +187,7 @@ export async function renderCertificatePdf(
   });
 
   // Footer left — certificate number & verification
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/certificate/${d.certificateNumber}`;
+  const verifyUrl = `${appUrl()}/certificate/${d.certificateNumber}`;
   page.drawText(`Certificate No: ${d.certificateNumber}`, { x: 60, y: 78, size: 11, font: helveticaBold, color: navy });
   page.drawText(`Verification Code: ${d.verificationCode}`, { x: 60, y: 62, size: 9, font: helvetica, color: gray });
   page.drawText(`Verify at: ${verifyUrl}`, { x: 60, y: 48, size: 9, font: helvetica, color: blue });
