@@ -1,16 +1,18 @@
 // Chrixlin.tech AI Academy — database schema
 //
-// DEV:  provider = "sqlite"  (file:./dev.db — open it in DBeaver: New Connection → SQLite → prisma/dev.db)
-// PROD: change provider to "postgresql" and set DATABASE_URL to your hosted PostgreSQL URL.
-//       The schema intentionally avoids SQLite-incompatible features (enums, Decimal) so the
-//       switch is provider + URL only, then run `prisma migrate dev`.
+// PostgreSQL (dev and prod). Set DATABASE_URL to your hosted connection string;
+// on Vercel this is injected automatically when you attach a Postgres database.
+// `prisma migrate deploy` runs as part of the build, so deploys apply migrations.
+//
+// Browse the data in DBeaver: New Connection → PostgreSQL → paste host, database,
+// user and password from your connection string.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

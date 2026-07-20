@@ -5,19 +5,25 @@ paid students, plus a private admin portal that runs the whole business — batc
 emails, certificates and analytics.
 
 **Stack:** Next.js 15 (App Router) • TypeScript • Tailwind CSS v4 • Framer Motion • Prisma •
-SQLite (dev) / PostgreSQL (prod) • Razorpay • Resend • JWT (jose) • pdf-lib • Recharts
+PostgreSQL • Razorpay • Resend • JWT (jose) • pdf-lib • Recharts
 
 ---
 
 ## Quick Start
 
+You need a PostgreSQL database (e.g. [Neon](https://neon.tech) or
+[Supabase](https://supabase.com) free tier, or Vercel → Storage → Create Database).
+
 ```bash
-cp .env.example .env # then set JWT_SECRET, ADMIN_PASSWORD and CRON_SECRET
+cp .env.example .env # set DATABASE_URL, JWT_SECRET, ADMIN_PASSWORD, CRON_SECRET
 npm install          # also runs prisma generate
-npm run db:migrate   # create/update the database (prisma/dev.db)
-npm run db:seed      # admin login, course, batches, FAQs, testimonials, sample students
+npm run db:migrate   # create the tables
+npm run db:seed      # admin login, course, batches, FAQs, testimonials
 npm run dev          # http://localhost:3000
 ```
+
+Add `SEED_SAMPLE_DATA=true` before `npm run db:seed` to also insert six demo
+students so the dashboard isn't empty. Leave it off for production.
 
 **Admin portal:** http://localhost:3000/admin
 Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from your `.env` (seeding fails if
@@ -31,7 +37,8 @@ Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from your `.env` (seeding fails if
 
 ### Browsing the database in DBeaver
 
-New Connection → **SQLite** → open `chrixlin-academy/prisma/dev.db`.
+New Connection → **PostgreSQL** → fill host, database, user and password from
+your `DATABASE_URL`. For hosted databases set SSL to `require`.
 
 ### Reset all data
 

@@ -12,6 +12,15 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    rules: {
+      // We link to API routes that stream file downloads (certificate PDFs,
+      // student CSV export). A plain <a> is correct there — <Link> does a
+      // client-side navigation and breaks the download. This rule targets the
+      // legacy pages/ router and misfires on App Router API routes.
+      "@next/next/no-html-link-for-pages": "off",
+    },
+  },
+  {
     ignores: [
       "node_modules/**",
       ".next/**",

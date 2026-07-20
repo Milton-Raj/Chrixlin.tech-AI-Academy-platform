@@ -160,7 +160,9 @@ async function main() {
   }
 
   // --- Sample students & payments (so the dashboard isn't empty) -----------
-  if ((await prisma.student.count()) === 0) {
+  // Demo data only — opt in with SEED_SAMPLE_DATA=true. Never seed these into
+  // production, where the dashboard should reflect real enrollments.
+  if (process.env.SEED_SAMPLE_DATA === "true" && (await prisma.student.count()) === 0) {
     const batch = await prisma.batch.findFirst({ orderBy: { startDate: "asc" } });
     if (batch) {
       const samples = [
