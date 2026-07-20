@@ -19,13 +19,16 @@ async function main() {
       "ADMIN_PASSWORD is not set. Copy .env.example to .env and choose a strong admin password before seeding."
     );
   }
+  // Re-seeding resets the password to ADMIN_PASSWORD, so rotating the admin
+  // credential is just: edit .env, re-run the seed.
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
   await prisma.admin.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: { passwordHash },
     create: {
       name: "Chrixlin Admin",
       email: adminEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 10),
+      passwordHash,
     },
   });
   console.log(`Admin ready: ${adminEmail} (password from ADMIN_PASSWORD in .env)`);
