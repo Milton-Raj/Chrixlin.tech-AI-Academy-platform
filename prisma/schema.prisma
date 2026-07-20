@@ -1,0 +1,180 @@
+// Chrixlin.tech AI Academy — database schema
+//
+// DEV:  provider = "sqlite"  (file:./dev.db — open it in DBeaver: New Connection → SQLite → prisma/dev.db)
+// PROD: change provider to "postgresql" and set DATABASE_URL to your hosted PostgreSQL URL.
+//       The schema intentionally avoids SQLite-incompatible features (enums, Decimal) so the
+//       switch is provider + URL only, then run `prisma migrate dev`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// Spec table: users (students)
+model Student {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  phone         String
+  country       String         @default("India")
+  profession    String         @default("")
+  experience    String         @default("")
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  registrations Registration[]
+  certificates  Certificate[]
+}
+
+model Course {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  title        String
+  description  String
+  durationDays Int       @default(15)
+  price        Int // INR (whole rupees)
+  offerPrice   Int
+  offerText    String    @default("")
+  offerEndDate DateTime?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  batches      Batch[]
+}
+
+// status: OPEN | RUNNING | COMPLETED | PAUSED | CLOSED
+model Batch {
+  id            String         @id @default(cuid())
+  courseId      String
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batchName     String
+  startDate     DateTime
+  endDate       DateTime
+  capacity      Int            @default(25)
+  seatsFilled   Int            @default(0)
+  status        String         @default("OPEN")
+  autoCreated   Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  registrations Registration[]
+  meeting       Meeting?
+}
+
+// status: REGISTERED | PAID | STARTED | COMPLETED | CANCELLED
+// paymentStatus: PENDING | PAID | FAILED | REFUNDED
+model Registration {
+  id            String       @id @default(cuid())
+  studentId     String
+  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batchId       String
+  batch         Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  status        String       @default("REGISTERED")
+  paymentStatus String       @default("PENDING")
+  createdAt     DateTime     @default(now())
+  payments      Payment[]
+  certificate   Certificate?
+
+  @@unique([studentId, batchId])
+}
+
+// status: CREATED | PAID | FAILED
+model Payment {
+  id             String       @id @default(cuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  amount         Int // INR
+  currency       String       @default("INR")
+  provider       String       @default("RAZORPAY")
+  orderId        String? // razorpay_order_id
+  transactionId  String? // razorpay_payment_id
+  status         String       @default("CREATED")
+  paymentDate    DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+// provider: ZOOM | GOOGLE_MEET | TEAMS
+model Meeting {
+  id          String    @id @default(cuid())
+  batchId     String    @unique
+  batch       Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  provider    String    @default("ZOOM")
+  meetingLink String
+  startDate   DateTime?
+  expiryDate  DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model Certificate {
+  id                String       @id @default(cuid())
+  studentId         String
+  student           Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  registrationId    String       @unique
+  registration      Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  certificateNumber String       @unique // CHX-2026-000001
+  verificationCode  String
+  courseTitle       String
+  issuedDate        DateTime     @default(now())
+  pdfPath           String?
+}
+
+// type: TEXT | IMAGE | VIDEO
+model Testimonial {
+  id        String  @id @default(cuid())
+  name      String
+  role      String  @default("")
+  content   String  @default("")
+  imageUrl  String  @default("")
+  videoUrl  String  @default("")
+  type      String  @default("TEXT")
+  rating    Int     @default(5)
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+}
+
+// Generic key/value store: CMS text, trust counters, batch automation config, contact links
+model Setting {
+  key   String @id
+  value String
+}
+
+// Certificate number sequence (and any future counters)
+model Counter {
+  name  String @id
+  value Int    @default(0)
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  registrationId String?
+  type           String // WELCOME | REMINDER | CLASS_START | CERTIFICATE | CONTACT
+  toEmail        String
+  subject        String
+  status         String // SENT | FAILED | SKIPPED_NO_KEY
+  error          String?
+  sentAt         DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}

@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chrixlin.tech — Premium AI Academy Platform
 
-## Getting Started
+Phase 1 (MVP) of the Chrixlin.tech AI Academy: a public landing page that converts visitors into
+paid students, plus a private admin portal that runs the whole business — batches, payments,
+emails, certificates and analytics.
 
-First, run the development server:
+**Stack:** Next.js 15 (App Router) • TypeScript • Tailwind CSS v4 • Framer Motion • Prisma •
+SQLite (dev) / PostgreSQL (prod) • Razorpay • Resend • JWT (jose) • pdf-lib • Recharts
+
+---
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env # then set JWT_SECRET, ADMIN_PASSWORD and CRON_SECRET
+npm install          # also runs prisma generate
+npm run db:migrate   # create/update the database (prisma/dev.db)
+npm run db:seed      # admin login, course, batches, FAQs, testimonials, sample students
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Admin portal:** http://localhost:3000/admin
+Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from your `.env` (seeding fails if
+`ADMIN_PASSWORD` is unset, so there is no default password to forget about).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Certificate verification (public):** `/certificate/CHX-2026-000001`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> Dev conveniences: with empty Razorpay keys the checkout runs in **simulated payment mode**
+> (full flow works, no real money). With an empty Resend key, emails are **logged to the
+> EmailLog table** instead of sent. Add real keys in `.env` to go live.
 
-## Learn More
+### Browsing the database in DBeaver
 
-To learn more about Next.js, take a look at the following resources:
+New Connection → **SQLite** → open `chrixlin-academy/prisma/dev.db`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Reset all data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run db:reset   # drops, re-migrates and re-seeds
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## What's Implemented (Phase 1)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Landing page (`/`)
+Hero with animated AI particle field and floating tool chips • admin-controlled trust counters •
+who-is-this-for • 11 skill cards • dream-outcome cards • 15-day roadmap timeline • 7 projects •
+certification showcase • **live batch picker** (real seats from DB) • pricing with strike-through
+offer • testimonials • FAQ accordion • contact (WhatsApp/email/socials + form) — all CMS-editable.
+
+### Enrollment (`/enroll/[batchId]`)
+3-step wizard: batch summary → student details → Razorpay checkout (or simulated in dev) →
+success page with receipt. Payment verification is HMAC-checked server-side; a Razorpay webhook
+(`/api/payment/webhook`, event `payment.captured`) is the safety net. Seats increment atomically.
+
+### Batch automation
+`syncBatches()` (runs on landing page, admin, and cron): rolls statuses OPEN → RUNNING →
+COMPLETED by date and always keeps N future batches open (N, capacity, spacing all editable in
+Admin → CMS → Batch Automation). No manual batch creation needed.
+
+### Email automation (Resend)
+1. **Welcome + receipt** — instantly on payment
+2. **Reminder** — 1 day before batch start
+3. **Class start + meeting link** — when the batch begins
+4. **Certificate** — on completion approval
+
+Emails 2–3 are sent by `GET /api/cron/emails` (protect with `Authorization: Bearer $CRON_SECRET`).
+Schedule it daily — on Vercel add to `vercel.json`:
+
+```json
+{ "crons": [{ "path": "/api/cron/emails", "schedule": "0 3 * * *" }] }
+```
+
+All sends are deduplicated via the EmailLog table, so extra runs are safe.
+
+### Certificates
+Admin approves completion → unique number `CHX-YYYY-NNNNNN` + verification code generated,
+student emailed. PDF is rendered on demand (`/api/certificates/[number]/pdf`) so it works on
+serverless with zero file storage. Public verification page at `/certificate/[number]`.
+
+### Admin portal (`/admin`, JWT cookie auth, protected by middleware)
+- **Dashboard** — revenue (total/today/month/year), registrations, active/completed students,
+  conversion rate, revenue & registration charts, batch fill rates, upcoming batches
+- **Students** — search, status filter, edit, deactivate, CSV/Excel export
+- **Batches** — create/edit/pause/close/delete (delete blocked if paid students exist)
+- **Meetings** — per-batch Zoom / Google Meet / Teams link + dates; emailed automatically
+- **Certificates** — approve & issue, resend, download PDF, verify
+- **Pricing** — price/discount/offer/duration with live landing-page preview
+- **CMS** — hero text, trust counters, batch automation config, contact/socials, FAQs,
+  testimonials — all without code changes
+
+---
+
+## Going to Production
+
+1. **PostgreSQL** — in `prisma/schema.prisma` change `provider = "sqlite"` to `"postgresql"`,
+   set `DATABASE_URL` to your hosted Postgres, run `npx prisma migrate dev`.
+2. **Razorpay** — set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`;
+   add a webhook for `payment.captured` → `https://your-domain/api/payment/webhook` and set
+   `RAZORPAY_WEBHOOK_SECRET`.
+3. **Resend** — set `RESEND_API_KEY` and a verified `EMAIL_FROM` domain.
+4. **Secrets** — generate strong `JWT_SECRET` and `CRON_SECRET`; change the admin password
+   (`ADMIN_PASSWORD` + re-seed, or update the Admin row).
+5. **Deploy to Vercel** — set all env vars, `NEXT_PUBLIC_APP_URL` to your domain, add the cron
+   entry above.
+
+## Phase 2 backlog (from spec)
+Student portal (assignments, recordings, certificates dashboard), referral & affiliate programs,
+WhatsApp notifications, mobile app, AI career assistant / resume builder / interview coach.

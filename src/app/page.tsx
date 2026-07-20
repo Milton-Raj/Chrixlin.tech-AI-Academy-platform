@@ -1,103 +1,118 @@
-import Image from "next/image";
+import { prisma } from "@/lib/db";
+import { getEnrollableBatches } from "@/lib/batches";
+import { getSettings, settingInt } from "@/lib/settings";
+import type { PublicBatch, PublicCourse, PublicFaq, PublicTestimonial } from "@/lib/types";
 
-export default function Home() {
+import Navbar from "@/components/landing/Navbar";
+import Hero from "@/components/landing/Hero";
+import TrustBar from "@/components/landing/TrustBar";
+import Audience from "@/components/landing/Audience";
+import Benefits from "@/components/landing/Benefits";
+import DreamOutcome from "@/components/landing/DreamOutcome";
+import Roadmap from "@/components/landing/Roadmap";
+import Projects from "@/components/landing/Projects";
+import Certification from "@/components/landing/Certification";
+import BatchPicker from "@/components/landing/BatchPicker";
+import Pricing from "@/components/landing/Pricing";
+import Testimonials from "@/components/landing/Testimonials";
+import FaqSection from "@/components/landing/FaqSection";
+import Contact from "@/components/landing/Contact";
+import Footer from "@/components/landing/Footer";
+
+export const dynamic = "force-dynamic"; // live seats, prices & CMS content
+
+export default async function LandingPage() {
+  const [settings, batches, course, testimonials, faqs] = await Promise.all([
+    getSettings(),
+    getEnrollableBatches(),
+    prisma.course.findFirst({ where: { active: true } }),
+    prisma.testimonial.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+    prisma.faq.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+  ]);
+
+  const courseDto: PublicCourse | null = course && {
+    id: course.id,
+    title: course.title,
+    description: course.description,
+    durationDays: course.durationDays,
+    price: course.price,
+    offerPrice: course.offerPrice,
+    offerText: course.offerText,
+    offerEndDate: course.offerEndDate?.toISOString() ?? null,
+  };
+
+  const batchDtos: PublicBatch[] = batches.map((b) => ({
+    id: b.id,
+    batchName: b.batchName,
+    startDate: b.startDate.toISOString(),
+    endDate: b.endDate.toISOString(),
+    capacity: b.capacity,
+    seatsFilled: b.seatsFilled,
+    status: b.status,
+  }));
+
+  const testimonialDtos: PublicTestimonial[] = testimonials.map((t) => ({
+    id: t.id,
+    name: t.name,
+    role: t.role,
+    content: t.content,
+    imageUrl: t.imageUrl,
+    videoUrl: t.videoUrl,
+    type: t.type,
+    rating: t.rating,
+  }));
+
+  const faqDtos: PublicFaq[] = faqs.map((f) => ({
+    id: f.id,
+    question: f.question,
+    answer: f.answer,
+  }));
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <main>
+      <Navbar ctaText={settings.ctaText} />
+      <Hero
+        headline={settings.heroHeadline}
+        subheadline={settings.heroSubheadline}
+        badge={settings.heroBadge}
+        ctaText={settings.ctaText}
+      />
+      <TrustBar
+        stats={[
+          { label: "Students Trained", value: settingInt(settings, "statsStudents", 0) },
+          { label: "Projects Completed", value: settingInt(settings, "statsProjects", 0) },
+          { label: "Certifications Issued", value: settingInt(settings, "statsCertificates", 0) },
+          { label: "Live Workshops", value: settingInt(settings, "statsWorkshops", 0) },
+        ]}
+      />
+      <Audience />
+      <Benefits />
+      <DreamOutcome />
+      <Roadmap />
+      <Projects />
+      <Certification />
+      <BatchPicker batches={batchDtos} durationDays={courseDto?.durationDays ?? 15} />
+      {courseDto && (
+        <Pricing
+          course={courseDto}
+          timerMinutes={settingInt(settings, "offerTimerMinutes", 0)}
+          timerLabel={settings.offerTimerLabel}
+          ctaText={settings.ctaText}
         />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      )}
+      <Testimonials testimonials={testimonialDtos} />
+      <FaqSection faqs={faqDtos} />
+      <Contact
+        whatsapp={settings.contactWhatsapp}
+        email={settings.contactEmail}
+        socials={{
+          linkedin: settings.socialLinkedin,
+          instagram: settings.socialInstagram,
+          youtube: settings.socialYoutube,
+          twitter: settings.socialTwitter,
+        }}
+      />
+      <Footer />
+    </main>
   );
 }

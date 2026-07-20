@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-navy: #0f172a;
+  --color-navy-light: #1e293b;
+  --color-electric: #3b82f6;
+  --color-gold: #f59e0b;
+  --color-cta: #ff6b00;
+  --color-muted: #94a3b8;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-navy);
+  color: #ffffff;
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+  .glass {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+  .card {
+    @apply rounded-2xl border border-white/10 bg-navy-light/60 p-6 backdrop-blur;
+  }
+  .btn-cta {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-cta px-6 py-3 font-semibold text-white shadow-lg shadow-cta/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-outline {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3 font-semibold text-slate-200 transition hover:border-electric/60 hover:text-white disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted;
+  }
+  .section-title {
+    @apply text-3xl font-bold tracking-tight text-white sm:text-4xl;
+  }
+  .section-sub {
+    @apply mt-3 text-base text-muted;
+  }
+  .input {
+    @apply w-full rounded-lg border border-white/10 bg-navy px-3 py-2 text-sm text-white placeholder:text-muted/50 focus:border-electric focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
+  }
+  .th {
+    @apply border-b border-white/10 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .td {
+    @apply border-b border-white/5 px-3 py-2.5 text-sm text-slate-200;
+  }
+}
+
+/* Hero gradient glow */
+.hero-glow {
+  background:
+    radial-gradient(600px 300px at 20% 10%, rgba(59, 130, 246, 0.18), transparent),
+    radial-gradient(500px 300px at 80% 20%, rgba(245, 158, 11, 0.1), transparent),
+    radial-gradient(800px 400px at 50% 100%, rgba(59, 130, 246, 0.08), transparent);
+}
+
+/* Floating animation for hero tool badges */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+.float-slow {
+  animation: float-y 6s ease-in-out infinite;
+}
+.float-slower {
+  animation: float-y 8s ease-in-out infinite;
+}
+
+/* Strike-through original price */
+.price-strike {
+  position: relative;
+}
+.price-strike::after {
+  content: "";
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 50%;
+  height: 2px;
+  background: #ef4444;
+  transform: rotate(-8deg);
 }
