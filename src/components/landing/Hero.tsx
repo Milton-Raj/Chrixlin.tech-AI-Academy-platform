@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
+import HeroOffer from "@/components/landing/HeroOffer";
 
 /** Animated AI particle field (spec: Hero Background — animated AI particles). */
 function Particles() {
@@ -90,11 +91,19 @@ export default function Hero({
   subheadline,
   badge,
   ctaText = "Enroll Now",
+  offer,
 }: {
   headline: string;
   subheadline: string;
   badge: string;
   ctaText?: string;
+  offer?: {
+    price: number;
+    offerPrice: number;
+    offerText: string;
+    timerMinutes: number;
+    timerLabel: string;
+  };
 }) {
   return (
     <section className="hero-glow relative overflow-hidden pt-16">
@@ -158,6 +167,18 @@ export default function Hero({
             {ctaText} <ArrowRight size={18} />
           </a>
         </motion.div>
+
+        {/* Price + countdown, visible immediately on load (all devices) */}
+        {offer && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-8 w-full px-2 sm:px-0"
+          >
+            <HeroOffer {...offer} />
+          </motion.div>
+        )}
       </div>
     </section>
   );

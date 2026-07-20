@@ -1,35 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Check, Flame, TimerReset } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import type { PublicCourse } from "@/lib/types";
 import { inr, discountPercent, formatDate } from "@/lib/format";
-
-/**
- * Per-visitor evergreen countdown (admin sets the minutes in CMS).
- * The deadline is stored in the visitor's browser, so every customer gets
- * their own timer; it restarts on their next visit after expiring.
- */
-function useCountdown(minutes: number): number | null {
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (minutes <= 0) return;
-    const key = "chx_offer_deadline";
-    let deadline = Number(localStorage.getItem(key) ?? 0);
-    if (!deadline || deadline <= Date.now()) {
-      deadline = Date.now() + minutes * 60_000;
-      localStorage.setItem(key, String(deadline));
-    }
-    const tick = () => setSecondsLeft(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [minutes]);
-
-  return secondsLeft;
-}
+import { useOfferCountdown, splitTime } from "@/components/landing/offer";
 
 function TimeBox({ value, label }: { value: string; label: string }) {
   return (
@@ -43,29 +18,26 @@ function TimeBox({ value, label }: { value: string; label: string }) {
 }
 
 function CountdownTimer({ minutes, label }: { minutes: number; label: string }) {
-  const secondsLeft = useCountdown(minutes);
+  const secondsLeft = useOfferCountdown(minutes);
   if (minutes <= 0 || secondsLeft === null) return null;
 
-  const h = Math.floor(secondsLeft / 3600);
-  const m = Math.floor((secondsLeft % 3600) / 60);
-  const s = secondsLeft % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const t = splitTime(secondsLeft);
 
   return (
     <div className="mt-6">
       <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-cta">
-        <TimerReset size={14} /> {label}
+        {secondsLeft === 0 ? <Flame size={14} /> : <TimerReset size={14} />} {label}
       </div>
       <div className="mt-3 flex items-start justify-center gap-2">
-        {h > 0 && (
+        {t.showHours && (
           <>
-            <TimeBox value={pad(h)} label="hrs" />
+            <TimeBox value={t.hours} label="hrs" />
             <span className="pt-1.5 text-2xl font-bold text-muted">:</span>
           </>
         )}
-        <TimeBox value={pad(m)} label="min" />
+        <TimeBox value={t.minutes} label="min" />
         <span className="pt-1.5 text-2xl font-bold text-muted">:</span>
-        <TimeBox value={pad(s)} label="sec" />
+        <TimeBox value={t.seconds} label="sec" />
       </div>
       {secondsLeft === 0 && (
         <p className="mt-2 text-center text-xs text-muted">Offer window closed — enroll now before seats fill.</p>

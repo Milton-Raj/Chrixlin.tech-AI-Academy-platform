@@ -76,6 +76,17 @@ export default async function LandingPage() {
         subheadline={settings.heroSubheadline}
         badge={settings.heroBadge}
         ctaText={settings.ctaText}
+        offer={
+          courseDto
+            ? {
+                price: courseDto.price,
+                offerPrice: courseDto.offerPrice,
+                offerText: courseDto.offerText,
+                timerMinutes: settingInt(settings, "offerTimerMinutes", 0),
+                timerLabel: settings.offerTimerLabel,
+              }
+            : undefined
+        }
       />
       <TrustBar
         stats={[
