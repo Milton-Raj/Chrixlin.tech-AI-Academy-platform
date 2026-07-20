@@ -101,8 +101,17 @@ serverless with zero file storage. Public verification page at `/certificate/[nu
 
 ## Going to Production
 
-1. **PostgreSQL** — in `prisma/schema.prisma` change `provider = "sqlite"` to `"postgresql"`,
-   set `DATABASE_URL` to your hosted Postgres, run `npx prisma migrate dev`.
+1. **PostgreSQL** — set `DATABASE_URL` to your hosted Postgres.
+
+   Migrations are **not** run during the Vercel build. Neon's pooled connection
+   can't take the advisory lock Prisma Migrate needs, so an automatic build-time
+   migration fails intermittently. Apply schema changes deliberately instead:
+
+   ```bash
+   DATABASE_URL="<production-url>" npm run db:deploy
+   ```
+
+   Run it before deploying a release that contains a new migration.
 2. **Razorpay** — set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`;
    add a webhook for `payment.captured` → `https://your-domain/api/payment/webhook` and set
    `RAZORPAY_WEBHOOK_SECRET`.
