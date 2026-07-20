@@ -71,8 +71,35 @@ model Batch {
   meeting       Meeting?
 }
 
+// A student's checkout attempt, captured BEFORE payment.
+//
+// Students, registrations and payments are only created once payment actually
+// succeeds, so the student list contains paying students only. This table
+// still records every attempt, which gives abandoned-checkout visibility
+// instead of silently discarding the data.
+//
+// status: PENDING | COMPLETED | FAILED
+model PendingEnrollment {
+  id         String   @id @default(cuid())
+  batchId    String
+  name       String
+  email      String
+  phone      String
+  country    String   @default("India")
+  profession String   @default("")
+  experience String   @default("")
+  amount     Int // INR quoted at checkout time
+  orderId    String   @unique // razorpay_order_id
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([email])
+}
+
 // status: REGISTERED | PAID | STARTED | COMPLETED | CANCELLED
 // paymentStatus: PENDING | PAID | FAILED | REFUNDED
+// source: WEBSITE | ADMIN_MANUAL — how the enrollment was created
 model Registration {
   id            String       @id @default(cuid())
   studentId     String
@@ -81,6 +108,8 @@ model Registration {
   batch         Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
   status        String       @default("REGISTERED")
   paymentStatus String       @default("PENDING")
+  source        String       @default("WEBSITE")
+  notes         String       @default("")
   createdAt     DateTime     @default(now())
   payments      Payment[]
   certificate   Certificate?
@@ -88,7 +117,8 @@ model Registration {
   @@unique([studentId, batchId])
 }
 
-// status: CREATED | PAID | FAILED
+// status: CREATED | PAID | FAILED | REFUNDED
+// provider: RAZORPAY | MANUAL   method: UPI | CARD | NETBANKING | CASH | BANK_TRANSFER | OTHER
 model Payment {
   id             String       @id @default(cuid())
   registrationId String
@@ -96,11 +126,15 @@ model Payment {
   amount         Int // INR
   currency       String       @default("INR")
   provider       String       @default("RAZORPAY")
+  method         String       @default("") // how it was paid
   orderId        String? // razorpay_order_id
-  transactionId  String? // razorpay_payment_id
+  transactionId  String? // razorpay_payment_id / manual reference
+  signature      String? // razorpay signature, kept for reconciliation
   status         String       @default("CREATED")
   paymentDate    DateTime?
   createdAt      DateTime     @default(now())
+
+  @@index([orderId])
 }
 
 // provider: ZOOM | GOOGLE_MEET | TEAMS

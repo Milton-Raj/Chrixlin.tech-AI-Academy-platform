@@ -13,7 +13,7 @@ declare global {
 }
 
 type OrderResponse = {
-  registrationId: string;
+  pendingId: string;
   order: { id: string; amount: number; currency: string };
   mock: boolean;
   keyId: string;

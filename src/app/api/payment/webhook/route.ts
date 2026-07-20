@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
     const payment = event.payload?.payment?.entity;
     if (payment?.order_id && payment?.id) {
       try {
-        await completePaymentByOrder(payment.order_id, payment.id);
+        await completePaymentByOrder(payment.order_id, payment.id, {
+          method: payment.method ?? "",
+        });
       } catch (e) {
         console.error("Webhook completion failed:", e);
         return NextResponse.json({ error: "Processing failed" }, { status: 500 });

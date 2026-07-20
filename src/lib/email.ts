@@ -113,7 +113,26 @@ export function welcomeEmail(d: {
   courseTitle: string;
   amount: number;
   transactionId: string;
+  meetingLink?: string;
+  meetingProvider?: string;
 }) {
+  const providerName =
+    d.meetingProvider === "GOOGLE_MEET"
+      ? "Google Meet"
+      : d.meetingProvider === "TEAMS"
+        ? "Microsoft Teams"
+        : "Zoom";
+
+  // Include the live class link straight away when the batch already has one,
+  // so students can save it the moment they pay.
+  const meetingBlock = d.meetingLink
+    ? p(`Your live classes run on <b style="color:#FFFFFF;">${providerName}</b>. Save this link — it's the same one for every session:`) +
+      button(d.meetingLink, `Join ${providerName} Class`) +
+      p(`If the button doesn't work, paste this into your browser:<br/><a href="${d.meetingLink}" style="color:#3B82F6;word-break:break-all;">${d.meetingLink}</a>`) +
+      p(`We'll also remind you a day before ${d.batchName} starts.`)
+    : p(`Your live class meeting link will be emailed to you before the batch starts. Keep an eye on your inbox.`) +
+      button(appUrl(), "Visit Chrixlin.tech");
+
   return {
     subject: `Welcome to ${d.courseTitle} — you're in ${d.batchName}! 🎉`,
     html: shell(
@@ -129,8 +148,7 @@ export function welcomeEmail(d: {
             ${infoRow("Transaction ID", d.transactionId)}
           </table>
         </td></tr></table>` +
-        p(`Your live class meeting link will be emailed to you before the batch starts. Keep an eye on your inbox.`) +
-        button(appUrl(), "Visit Chrixlin.tech")
+        meetingBlock
     ),
   };
 }

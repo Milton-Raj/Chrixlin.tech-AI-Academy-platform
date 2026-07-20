@@ -27,7 +27,15 @@ interface Stats {
     seatsFilled: number;
     capacity: number;
   }[];
-  batchFill: { batchName: string; seatsFilled: number; capacity: number; status: string }[];
+  batchFill: {
+    id: string;
+    batchName: string;
+    startDate: string;
+    registered: number;
+    capacity: number;
+    seatsLeft: number;
+    status: string;
+  }[];
   revenueByMonth: { label: string; revenue: number }[];
   registrationsByDay: { label: string; count: number }[];
 }
@@ -185,57 +193,66 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Batch fill + upcoming */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="card">
-          <h2 className="text-sm font-semibold">Batch Fill Rate</h2>
-          <div className="mt-4 space-y-3">
-            {stats.batchFill.length === 0 && <p className="text-sm text-muted">No active batches.</p>}
-            {stats.batchFill.map((b) => {
-              const pct = Math.min(Math.round((b.seatsFilled / b.capacity) * 100), 100);
-              return (
-                <div key={b.batchName}>
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">
-                      {b.batchName}
-                      <span className="ml-2 text-muted">({b.status})</span>
-                    </span>
-                    <span className="text-muted">
-                      {b.seatsFilled}/{b.capacity} • {pct}%
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className={`h-full rounded-full ${pct >= 90 ? "bg-cta" : "bg-gradient-to-r from-electric to-gold"}`}
-                      style={{ width: `${Math.max(pct, 2)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="card">
-          <h2 className="text-sm font-semibold">Upcoming Batches</h2>
-          <table className="mt-3 w-full">
+      {/* Seats & registrations per batch */}
+      <div className="card">
+        <h2 className="text-sm font-semibold">Seats & Registrations by Batch</h2>
+        <p className="mt-1 text-xs text-muted">
+          Paid registrations per batch, straight from the database.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr>
                 <th className="th">Batch</th>
                 <th className="th">Starts</th>
-                <th className="th">Seats</th>
+                <th className="th">Registered</th>
+                <th className="th">Seats Left</th>
+                <th className="th">Fill Rate</th>
+                <th className="th">Status</th>
               </tr>
             </thead>
             <tbody>
-              {stats.upcomingBatches.map((b) => (
-                <tr key={b.id}>
-                  <td className="td font-medium">{b.batchName}</td>
-                  <td className="td">{formatDate(b.startDate)}</td>
-                  <td className="td">
-                    {b.seatsFilled}/{b.capacity}
+              {stats.batchFill.length === 0 && (
+                <tr>
+                  <td className="td text-muted" colSpan={6}>
+                    No batches yet.
                   </td>
                 </tr>
-              ))}
+              )}
+              {stats.batchFill.map((b) => {
+                const pct = Math.min(Math.round((b.registered / b.capacity) * 100), 100);
+                return (
+                  <tr key={b.id} className="hover:bg-white/[0.02]">
+                    <td className="td font-medium">{b.batchName}</td>
+                    <td className="td text-xs">{formatDate(b.startDate)}</td>
+                    <td className="td">
+                      <span className="font-bold text-white">{b.registered}</span>
+                      <span className="text-muted"> / {b.capacity}</span>
+                    </td>
+                    <td className="td">
+                      <span className={b.seatsLeft === 0 ? "font-semibold text-red-400" : ""}>
+                        {b.seatsLeft}
+                      </span>
+                    </td>
+                    <td className="td">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-24 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={`h-full rounded-full ${pct >= 90 ? "bg-cta" : "bg-gradient-to-r from-electric to-gold"}`}
+                            style={{ width: `${Math.max(pct, 2)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted">{pct}%</span>
+                      </div>
+                    </td>
+                    <td className="td">
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold">
+                        {b.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

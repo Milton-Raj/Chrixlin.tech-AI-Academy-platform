@@ -14,9 +14,12 @@ const schema = z.object({
 });
 
 /**
- * Registration step: upserts the student, creates/reuses a pending
- * registration for the chosen batch, creates a Razorpay order (or a mock
- * order in dev) and returns everything the client needs to open checkout.
+ * Checkout step: records the form as a PendingEnrollment and opens a Razorpay
+ * order (or a mock order in dev).
+ *
+ * Deliberately does NOT create the student, registration or payment records —
+ * those are created by completePaymentByOrder once the payment succeeds, so
+ * the student list only ever contains people who actually paid.
  */
 export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -36,23 +39,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This batch is full — please pick another batch" }, { status: 400 });
   }
 
-  const student = await prisma.student.upsert({
+  // Block a second purchase of a batch the student already paid for.
+  const existing = await prisma.student.findUnique({
     where: { email },
-    update: { name, phone, country, profession, experience },
-    create: { name, email, phone, country, profession, experience },
+    include: { registrations: { where: { batchId, paymentStatus: "PAID" } } },
   });
-
-  // Reuse an existing registration for this batch (e.g. retry after failed payment)
-  let registration = await prisma.registration.findUnique({
-    where: { studentId_batchId: { studentId: student.id, batchId } },
-  });
-  if (registration?.paymentStatus === "PAID") {
+  if (existing && existing.registrations.length > 0) {
     return NextResponse.json({ error: "You are already enrolled in this batch" }, { status: 400 });
-  }
-  if (!registration) {
-    registration = await prisma.registration.create({
-      data: { studentId: student.id, batchId },
-    });
   }
 
   const course = batch.course;
@@ -61,22 +54,27 @@ export async function POST(req: NextRequest) {
     (!course.offerEndDate || course.offerEndDate > new Date());
   const amount = offerActive ? course.offerPrice : course.price;
 
-  const order = await createOrder(amount, registration.id);
+  const order = await createOrder(amount, `batch_${batchId}`);
 
-  await prisma.payment.create({
+  const pending = await prisma.pendingEnrollment.create({
     data: {
-      registrationId: registration.id,
+      batchId,
+      name,
+      email,
+      phone,
+      country,
+      profession,
+      experience,
       amount,
       orderId: order.id,
-      status: "CREATED",
     },
   });
 
   return NextResponse.json({
-    registrationId: registration.id,
+    pendingId: pending.id,
     order: { id: order.id, amount: order.amount, currency: order.currency },
     mock: isMockPayments,
     keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "",
-    student: { name: student.name, email: student.email, phone: student.phone },
+    student: { name, email, phone },
   });
 }

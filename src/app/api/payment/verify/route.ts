@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const payment = await completePaymentByOrder(orderId, paymentId);
+    const payment = await completePaymentByOrder(orderId, paymentId, { signature });
     return NextResponse.json({ ok: true, registrationId: payment.registrationId });
   } catch (e) {
     return NextResponse.json(

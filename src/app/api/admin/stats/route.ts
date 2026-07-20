@@ -53,10 +53,13 @@ export async function GET() {
       orderBy: { startDate: "asc" },
       take: 5,
     }),
+    // Registration counts come from the registrations themselves, not the
+    // cached seatsFilled counter, so the dashboard reflects reality.
     prisma.batch.findMany({
-      where: { status: { in: ["OPEN", "RUNNING"] } },
       orderBy: { startDate: "asc" },
-      take: 8,
+      include: {
+        registrations: { select: { paymentStatus: true } },
+      },
     }),
     prisma.payment.findMany({
       where: { status: "PAID", paymentDate: { gte: new Date(now.getTime() - 180 * DAY) } },
@@ -110,12 +113,18 @@ export async function GET() {
       seatsFilled: b.seatsFilled,
       capacity: b.capacity,
     })),
-    batchFill: fillBatches.map((b) => ({
-      batchName: b.batchName,
-      seatsFilled: b.seatsFilled,
-      capacity: b.capacity,
-      status: b.status,
-    })),
+    batchFill: fillBatches.map((b) => {
+      const paid = b.registrations.filter((r) => r.paymentStatus === "PAID").length;
+      return {
+        id: b.id,
+        batchName: b.batchName,
+        startDate: b.startDate,
+        registered: paid,
+        capacity: b.capacity,
+        seatsLeft: Math.max(b.capacity - paid, 0),
+        status: b.status,
+      };
+    }),
     revenueByMonth,
     registrationsByDay,
   });

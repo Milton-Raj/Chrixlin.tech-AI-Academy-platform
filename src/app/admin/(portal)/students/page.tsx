@@ -1,8 +1,257 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Download, Pencil, X, Loader2 } from "lucide-react";
+import { Search, Download, Pencil, X, Loader2, UserPlus, CheckCircle2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+
+interface BatchOption {
+  id: string;
+  batchName: string;
+  startDate: string;
+  status: string;
+}
+
+const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CARD", "NETBANKING", "OTHER"];
+
+const emptyNew = {
+  name: "",
+  email: "",
+  phone: "",
+  country: "India",
+  profession: "",
+  experience: "Beginner",
+  batchId: "",
+  amount: 999,
+  method: "UPI",
+  transactionId: "",
+  notes: "",
+  sendWelcomeEmail: true,
+};
+
+/** Manual enrollment for students who paid offline (cash, bank transfer, UPI). */
+function AddStudentModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const [form, setForm] = useState({ ...emptyNew });
+  const [batches, setBatches] = useState<BatchOption[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/batches")
+      .then((r) => r.json())
+      .then((data) => {
+        const open = (data.batches ?? []).filter((b: BatchOption) =>
+          ["OPEN", "RUNNING", "PAUSED"].includes(b.status)
+        );
+        setBatches(open);
+        if (open[0]) setForm((f) => ({ ...f, batchId: open[0].id }));
+      });
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const res = await fetch("/api/admin/students/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not add student");
+      return;
+    }
+    setDone(data.emailStatus);
+    onAdded();
+  }
+
+  if (done !== null) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="card w-full max-w-md !bg-navy-light text-center">
+          <CheckCircle2 size={44} className="mx-auto text-green-400" />
+          <h2 className="mt-3 text-lg font-semibold">Student added</h2>
+          <p className="mt-1 text-sm text-muted">
+            {done === "SENT"
+              ? "Welcome email sent with their batch and class link."
+              : done === "SKIPPED_NO_KEY"
+                ? "Welcome email logged (no Resend API key set in this environment)."
+                : done === "FAILED"
+                  ? "Student saved, but the welcome email failed to send."
+                  : "Student saved. No welcome email was requested."}
+          </p>
+          <button className="btn-cta mt-5 w-full !py-2 text-sm" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10">
+      <form onSubmit={submit} className="card w-full max-w-lg !bg-navy-light">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Add Student</h2>
+            <p className="text-xs text-muted">For students who paid offline or over the phone.</p>
+          </div>
+          <button type="button" onClick={onClose} className="cursor-pointer text-muted hover:text-white">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Full Name *</label>
+              <input
+                className="input"
+                required
+                minLength={2}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Email *</label>
+              <input
+                className="input"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Phone *</label>
+              <input
+                className="input"
+                required
+                minLength={7}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Country</label>
+              <input
+                className="input"
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Profession</label>
+              <input
+                className="input"
+                value={form.profession}
+                onChange={(e) => setForm({ ...form, profession: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Experience</label>
+              <select
+                className="input"
+                value={form.experience}
+                onChange={(e) => setForm({ ...form, experience: e.target.value })}
+              >
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">Batch *</label>
+                <select
+                  className="input"
+                  required
+                  value={form.batchId}
+                  onChange={(e) => setForm({ ...form, batchId: e.target.value })}
+                >
+                  {batches.length === 0 && <option value="">No active batches</option>}
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.batchName} — {formatDate(b.startDate)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Amount Paid (₹) *</label>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  required
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="label">Payment Method</label>
+                <select
+                  className="input"
+                  value={form.method}
+                  onChange={(e) => setForm({ ...form, method: e.target.value })}
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {m.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Reference / Txn ID</label>
+                <input
+                  className="input"
+                  placeholder="UTR, receipt no."
+                  value={form.transactionId}
+                  onChange={(e) => setForm({ ...form, transactionId: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="label">Notes</label>
+              <textarea
+                className="input min-h-16"
+                placeholder="Anything worth recording about this enrollment"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </div>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.sendWelcomeEmail}
+                onChange={(e) => setForm({ ...form, sendWelcomeEmail: e.target.checked })}
+              />
+              Send welcome email with receipt and live class link
+            </label>
+          </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button type="button" className="btn-outline flex-1 !py-2 text-sm" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-cta flex-1 !py-2 text-sm" disabled={saving || batches.length === 0}>
+            {saving ? <Loader2 size={14} className="animate-spin" /> : null} Add Student
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 interface StudentRow {
   id: string;
@@ -37,6 +286,7 @@ export default function StudentsPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<StudentRow | null>(null);
+  const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -84,10 +334,17 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-bold">Students</h1>
           <p className="text-sm text-muted">{rows.length} students</p>
         </div>
-        <a href="/api/admin/students/export" className="btn-outline !px-4 !py-2 text-sm">
-          <Download size={15} /> Export CSV / Excel
-        </a>
+        <div className="flex gap-3">
+          <a href="/api/admin/students/export" className="btn-outline !px-4 !py-2 text-sm">
+            <Download size={15} /> Export CSV / Excel
+          </a>
+          <button className="btn-cta !px-4 !py-2 text-sm" onClick={() => setAdding(true)}>
+            <UserPlus size={15} /> Add Student
+          </button>
+        </div>
       </div>
+
+      {adding && <AddStudentModal onClose={() => setAdding(false)} onAdded={load} />}
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-52">

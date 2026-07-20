@@ -94,7 +94,11 @@ export default function BatchesPage() {
         <div>
           <h1 className="text-2xl font-bold">Batches</h1>
           <p className="text-sm text-muted">
-            Auto-created batches keep future seats available — you can also create and manage them manually.
+            Schedule and status. Registration counts per batch live on the{" "}
+            <a href="/admin" className="text-electric hover:underline">
+              dashboard
+            </a>
+            .
           </p>
         </div>
         <button
@@ -111,7 +115,7 @@ export default function BatchesPage() {
             <tr>
               <th className="th">Batch</th>
               <th className="th">Dates</th>
-              <th className="th">Seats</th>
+              <th className="th">Capacity</th>
               <th className="th">Status</th>
               <th className="th">Source</th>
               <th className="th">Actions</th>
@@ -134,17 +138,7 @@ export default function BatchesPage() {
                   <td className="td text-xs">
                     {formatDate(b.startDate)} → {formatDate(b.endDate)}
                   </td>
-                  <td className="td">
-                    {b.seatsFilled}/{b.capacity}
-                    <div className="mt-1 h-1 w-20 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full bg-gradient-to-r from-electric to-gold"
-                        style={{
-                          width: `${Math.min((b.seatsFilled / b.capacity) * 100, 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </td>
+                  <td className="td">{b.capacity} seats</td>
                   <td className="td">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor[b.status]}`}>
                       {b.status}
