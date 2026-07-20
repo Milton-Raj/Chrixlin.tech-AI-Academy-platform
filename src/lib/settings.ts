@@ -31,6 +31,9 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   reminderHours1: "24",
   reminderHours2: "1",
 
+  // Written by the cron endpoint so the admin can see the scheduler is alive.
+  cronLastRunAt: "",
+
   // Batch automation
   parallelBatches: "2", // future batches always kept open
   defaultCapacity: "25",

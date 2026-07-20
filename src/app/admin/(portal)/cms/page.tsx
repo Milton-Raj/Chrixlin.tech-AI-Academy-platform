@@ -360,7 +360,12 @@ export default function CmsPage() {
       <div>
         <h1 className="text-2xl font-bold">CMS — Site Content</h1>
         <p className="text-sm text-muted">
-          Edit the landing page without code changes. All changes go live immediately.
+          Edit the landing page without code changes. All changes go live immediately. Reminders,
+          the offer timer and batch automation live in{" "}
+          <a href="/admin/settings" className="text-electric hover:underline">
+            Settings
+          </a>
+          .
         </p>
       </div>
 
@@ -376,18 +381,6 @@ export default function CmsPage() {
       />
 
       <SettingsSection
-        title="Call to Action & Offer Timer"
-        hint="The countdown runs per visitor (each customer gets their own timer in their browser). Set minutes to 0 to hide it."
-        settings={settings}
-        onSaved={load}
-        fields={[
-          { key: "ctaText", label: "CTA button text (e.g. Enroll Now / Register Now)" },
-          { key: "offerTimerMinutes", label: "Countdown minutes (0 = off)" },
-          { key: "offerTimerLabel", label: "Countdown label" },
-        ]}
-      />
-
-      <SettingsSection
         title="Trust Counters"
         hint="The animated numbers under the hero."
         settings={settings}
@@ -397,30 +390,6 @@ export default function CmsPage() {
           { key: "statsProjects", label: "Projects Completed" },
           { key: "statsCertificates", label: "Certifications Issued" },
           { key: "statsWorkshops", label: "Live Workshops" },
-        ]}
-      />
-
-      <SettingsSection
-        title="Reminder Emails"
-        hint="Hours before a batch starts to email paid students. Set a field to 0 to switch that reminder off. Requires the hourly cron to be scheduled."
-        settings={settings}
-        onSaved={load}
-        fields={[
-          { key: "reminderHours1", label: "First reminder (hours before)" },
-          { key: "reminderHours2", label: "Second reminder (hours before)" },
-        ]}
-      />
-
-      <SettingsSection
-        title="Batch Automation"
-        hint="How the system auto-creates future batches — no manual batch creation needed."
-        settings={settings}
-        onSaved={load}
-        fields={[
-          { key: "parallelBatches", label: "Future batches kept open" },
-          { key: "defaultCapacity", label: "Capacity per batch" },
-          { key: "batchStaggerDays", label: "Days between batch starts" },
-          { key: "firstBatchLeadDays", label: "Lead days for first batch" },
         ]}
       />
 

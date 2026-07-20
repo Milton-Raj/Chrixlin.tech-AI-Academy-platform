@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { classStartEmail, reminderEmail, sendEmail } from "@/lib/email";
 import { syncBatches } from "@/lib/batches";
-import { getSettings, settingInt } from "@/lib/settings";
+import { getSettings, setSettings, settingInt } from "@/lib/settings";
 
 const HOUR = 3_600_000;
 
@@ -111,6 +111,9 @@ export async function GET(req: NextRequest) {
       });
     }
   }
+
+  // Record the run so the admin Settings screen can show the scheduler is alive.
+  await setSettings({ cronLastRunAt: new Date().toISOString() });
 
   return NextResponse.json({ ok: true, reminders, classStarts });
 }

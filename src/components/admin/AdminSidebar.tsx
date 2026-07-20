@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   IndianRupee,
   FileEdit,
+  Settings,
   LogOut,
   ExternalLink,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const nav = [
   { href: "/admin/certificates", label: "Certificates", icon: BadgeCheck },
   { href: "/admin/pricing", label: "Pricing", icon: IndianRupee },
   { href: "/admin/cms", label: "CMS", icon: FileEdit },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminSidebar() {
