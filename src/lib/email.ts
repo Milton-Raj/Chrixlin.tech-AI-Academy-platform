@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
-import { formatDate, inr } from "@/lib/format";
+import { formatDate, formatDateTime, inr } from "@/lib/format";
 
 /**
  * Email automation (spec: EMAIL AUTOMATION).
@@ -98,10 +98,25 @@ const p = (text: string) =>
 const infoRow = (label: string, value: string) =>
   `<tr><td style="color:#94A3B8;font-size:13px;padding:6px 12px 6px 0;white-space:nowrap;">${label}</td><td style="color:#FFFFFF;font-size:13px;padding:6px 0;font-weight:bold;">${value}</td></tr>`;
 
-const button = (href: string, label: string) =>
-  `<table cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td style="background:#FF6B00;border-radius:8px;">
+const button = (href: string, label: string, color = "#FF6B00") =>
+  `<table cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td style="background:${color};border-radius:8px;">
      <a href="${href}" style="display:inline-block;padding:12px 28px;color:#FFFFFF;font-size:15px;font-weight:bold;text-decoration:none;">${label}</a>
    </td></tr></table>`;
+
+/**
+ * WhatsApp group invite block.
+ * WhatsApp offers no API for adding a number to a group, so the student joins
+ * by tapping this link. Delivered the moment their payment succeeds.
+ */
+const whatsappBlock = (link: string, batchName: string) =>
+  link
+    ? `<table cellpadding="0" cellspacing="0" style="background:#0F172A;border:1px solid #25D366;border-radius:8px;width:100%;margin:16px 0;"><tr><td style="padding:18px;">
+         <div style="color:#25D366;font-size:14px;font-weight:bold;margin-bottom:6px;">💬 Join your batch WhatsApp group</div>
+         <div style="color:#CBD5E1;font-size:14px;line-height:1.6;">All ${batchName} announcements, class links and doubt-solving happen here. Tap to join:</div>
+         ${button(link, "Join WhatsApp Group", "#25D366")}
+         <div style="color:#64748B;font-size:11px;">Link not working? Copy this: <a href="${link}" style="color:#3B82F6;word-break:break-all;">${link}</a></div>
+       </td></tr></table>`
+    : "";
 
 // ---------------------------------------------------------------------------
 // Email 1 — immediately after payment: welcome + receipt + batch details
@@ -115,6 +130,7 @@ export function welcomeEmail(d: {
   transactionId: string;
   meetingLink?: string;
   meetingProvider?: string;
+  whatsappGroupLink?: string;
 }) {
   const providerName =
     d.meetingProvider === "GOOGLE_MEET"
@@ -148,20 +164,54 @@ export function welcomeEmail(d: {
             ${infoRow("Transaction ID", d.transactionId)}
           </table>
         </td></tr></table>` +
+        whatsappBlock(d.whatsappGroupLink ?? "", d.batchName) +
         meetingBlock
     ),
   };
 }
 
-// Email 2 — one day before start
-export function reminderEmail(d: { studentName: string; batchName: string; startDate: Date }) {
+// Email 2 — pre-batch reminders. Timing is admin-configurable, so the copy
+// adapts to how far out the batch is rather than assuming "tomorrow".
+export function reminderEmail(d: {
+  studentName: string;
+  batchName: string;
+  startDate: Date;
+  hoursBefore: number;
+  meetingLink?: string;
+  meetingProvider?: string;
+  whatsappGroupLink?: string;
+}) {
+  const soon = d.hoursBefore <= 3;
+  const whenPhrase =
+    d.hoursBefore <= 1
+      ? "in about an hour"
+      : d.hoursBefore < 24
+        ? `in about ${d.hoursBefore} hours`
+        : d.hoursBefore === 24
+          ? "tomorrow"
+          : `on ${formatDate(d.startDate)}`;
+
+  const providerName =
+    d.meetingProvider === "GOOGLE_MEET"
+      ? "Google Meet"
+      : d.meetingProvider === "TEAMS"
+        ? "Microsoft Teams"
+        : "Zoom";
+
   return {
-    subject: `Reminder: ${d.batchName} starts tomorrow!`,
+    subject: soon
+      ? `⏰ ${d.batchName} starts ${whenPhrase} — get ready!`
+      : `Reminder: ${d.batchName} starts ${whenPhrase}`,
     html: shell(
-      `Your class starts tomorrow, ${d.studentName}!`,
-      p(`<b style="color:#F59E0B;">${d.batchName}</b> begins on <b style="color:#FFFFFF;">${formatDate(d.startDate)}</b>.`) +
-        p(`Get your notebook ready, charge your laptop, and come with questions. The meeting link will arrive in a separate email when class begins.`) +
-        button(appUrl(), "View Course Details")
+      soon ? `Starting ${whenPhrase}, ${d.studentName}!` : `See you soon, ${d.studentName}!`,
+      p(`<b style="color:#F59E0B;">${d.batchName}</b> begins <b style="color:#FFFFFF;">${whenPhrase}</b> (${formatDateTime(d.startDate)}).`) +
+        (soon
+          ? p(`Grab a notebook, charge your laptop and find a quiet spot. See you in class!`)
+          : p(`Block the time in your calendar and come with questions — the sessions are hands-on.`)) +
+        (d.meetingLink
+          ? button(d.meetingLink, `Join ${providerName} Class`)
+          : p(`Your class link will be emailed to you before the session starts.`)) +
+        whatsappBlock(d.whatsappGroupLink ?? "", d.batchName)
     ),
   };
 }

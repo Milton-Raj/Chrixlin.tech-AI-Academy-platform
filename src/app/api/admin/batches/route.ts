@@ -20,6 +20,7 @@ export async function GET() {
       seatsFilled: b.seatsFilled,
       status: b.status,
       autoCreated: b.autoCreated,
+      whatsappGroupLink: b.whatsappGroupLink,
       registrations: b._count.registrations,
       meeting: b.meeting
         ? {
@@ -37,6 +38,7 @@ const createSchema = z.object({
   batchName: z.string().min(1).max(100),
   startDate: z.string().min(1),
   capacity: z.number().int().min(1).max(10000),
+  whatsappGroupLink: z.string().max(500).default(""),
 });
 
 export async function POST(req: NextRequest) {
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
       startDate,
       endDate: new Date(startDate.getTime() + course.durationDays * 86_400_000),
       capacity: parsed.data.capacity,
+      whatsappGroupLink: parsed.data.whatsappGroupLink,
       status: "OPEN",
       autoCreated: false,
     },

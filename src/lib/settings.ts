@@ -27,6 +27,10 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   statsCertificates: "950",
   statsWorkshops: "85",
 
+  // Pre-batch reminder emails — hours before start. Set either to 0 to disable.
+  reminderHours1: "24",
+  reminderHours2: "1",
+
   // Batch automation
   parallelBatches: "2", // future batches always kept open
   defaultCapacity: "25",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, X, Loader2, Pause, Play, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, Pause, Play, Lock, MessageCircle } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
 interface BatchRow {
@@ -14,6 +14,7 @@ interface BatchRow {
   seatsFilled: number;
   status: string;
   autoCreated: boolean;
+  whatsappGroupLink: string;
   registrations: number;
 }
 
@@ -25,7 +26,14 @@ const statusColor: Record<string, string> = {
   CLOSED: "bg-red-500/15 text-red-400",
 };
 
-const emptyForm = { id: "", batchName: "", startDate: "", capacity: 25, status: "OPEN" };
+const emptyForm = {
+  id: "",
+  batchName: "",
+  startDate: "",
+  capacity: 25,
+  status: "OPEN",
+  whatsappGroupLink: "",
+};
 
 export default function BatchesPage() {
   const [rows, setRows] = useState<BatchRow[]>([]);
@@ -58,6 +66,7 @@ export default function BatchesPage() {
         batchName: form.batchName,
         startDate: form.startDate,
         capacity: Number(form.capacity),
+        whatsappGroupLink: form.whatsappGroupLink.trim(),
         ...(isEdit ? { status: form.status } : {}),
       }),
     });
@@ -134,6 +143,15 @@ export default function BatchesPage() {
                   <td className="td">
                     <div className="font-medium">{b.batchName}</div>
                     <div className="text-xs text-muted">{b.courseTitle}</div>
+                    {b.whatsappGroupLink ? (
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-green-400">
+                        <MessageCircle size={10} /> WhatsApp group set
+                      </span>
+                    ) : (
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted">
+                        <MessageCircle size={10} /> No WhatsApp group
+                      </span>
+                    )}
                   </td>
                   <td className="td text-xs">
                     {formatDate(b.startDate)} → {formatDate(b.endDate)}
@@ -156,6 +174,7 @@ export default function BatchesPage() {
                             startDate: b.startDate.slice(0, 10),
                             capacity: b.capacity,
                             status: b.status,
+                            whatsappGroupLink: b.whatsappGroupLink ?? "",
                           })
                         }
                       >
@@ -246,6 +265,21 @@ export default function BatchesPage() {
                   value={form.capacity}
                   onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
                 />
+              </div>
+              <div>
+                <label className="label">WhatsApp Group Invite Link</label>
+                <input
+                  className="input"
+                  type="url"
+                  placeholder="https://chat.whatsapp.com/..."
+                  value={form.whatsappGroupLink}
+                  onChange={(e) => setForm({ ...form, whatsappGroupLink: e.target.value })}
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  Sent automatically in the welcome email the moment a student pays. In WhatsApp:
+                  group → Invite via link → Copy. WhatsApp has no API to add numbers to a group, so
+                  students join by tapping this link.
+                </p>
               </div>
               {form.id && (
                 <div>

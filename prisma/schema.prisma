@@ -56,17 +56,23 @@ model Course {
 
 // status: OPEN | RUNNING | COMPLETED | PAUSED | CLOSED
 model Batch {
-  id            String         @id @default(cuid())
-  courseId      String
-  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  batchName     String
-  startDate     DateTime
-  endDate       DateTime
-  capacity      Int            @default(25)
-  seatsFilled   Int            @default(0)
-  status        String         @default("OPEN")
-  autoCreated   Boolean        @default(true)
-  createdAt     DateTime       @default(now())
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batchName String
+  startDate DateTime
+  endDate   DateTime
+  capacity  Int      @default(25)
+  seatsFilled Int    @default(0)
+  status    String   @default("OPEN")
+  autoCreated Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  // WhatsApp group invite link (https://chat.whatsapp.com/...). Sent to the
+  // student the moment they pay. WhatsApp has no API for adding someone to a
+  // group, so the student joins by tapping this link themselves.
+  whatsappGroupLink String @default("")
+
   registrations Registration[]
   meeting       Meeting?
 }

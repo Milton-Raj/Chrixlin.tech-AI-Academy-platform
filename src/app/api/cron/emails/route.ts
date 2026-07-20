@@ -2,18 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { classStartEmail, reminderEmail, sendEmail } from "@/lib/email";
 import { syncBatches } from "@/lib/batches";
+import { getSettings, settingInt } from "@/lib/settings";
 
-const DAY = 86_400_000;
+const HOUR = 3_600_000;
 
 /**
- * Email automation cron (spec: Email 2 — 1 day before start; Email 3 — class
- * start with meeting link). Also rolls the batch pipeline forward.
+ * Email automation cron: pre-batch reminders and the class-start link.
+ * Also rolls the batch pipeline forward.
  *
- * Schedule this endpoint (e.g. Vercel Cron, daily):
+ * Schedule this endpoint hourly:
  *   GET /api/cron/emails  with header  Authorization: Bearer <CRON_SECRET>
  *
- * Deduplication: an EmailLog row per (registration, type) guards against
- * re-sends, so running the cron more often than daily is safe.
+ * Reminder timings come from admin settings (reminderHours1 / reminderHours2),
+ * defaulting to 24h and 1h before the batch starts.
+ *
+ * A reminder fires once the batch is within its window rather than only at the
+ * exact hour, so a late or infrequent cron run still delivers instead of
+ * silently skipping. An EmailLog row per (registration, type) prevents
+ * duplicates, so running this more often than needed is harmless.
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -22,34 +28,49 @@ export async function GET(req: NextRequest) {
   }
 
   await syncBatches();
+  const settings = await getSettings();
   const now = new Date();
   let reminders = 0;
   let classStarts = 0;
 
-  // --- Email 2: reminder for batches starting within the next 24h ----------
-  const startingSoon = await prisma.batch.findMany({
-    where: { startDate: { gt: now, lte: new Date(now.getTime() + DAY) } },
-    include: { registrations: { where: { paymentStatus: "PAID" }, include: { student: true } } },
-  });
-  for (const batch of startingSoon) {
-    for (const reg of batch.registrations) {
-      const already = await prisma.emailLog.findFirst({
-        where: { registrationId: reg.id, type: "REMINDER", status: { not: "FAILED" } },
-      });
-      if (already) continue;
-      const email = reminderEmail({
-        studentName: reg.student.name,
-        batchName: batch.batchName,
-        startDate: batch.startDate,
-      });
-      await sendEmail({
-        to: reg.student.email,
-        subject: email.subject,
-        html: email.html,
-        type: "REMINDER",
-        registrationId: reg.id,
-      });
-      reminders++;
+  // --- Pre-batch reminders at the two configured offsets -------------------
+  const windows = [
+    { hours: settingInt(settings, "reminderHours1", 24), type: "REMINDER_1" },
+    { hours: settingInt(settings, "reminderHours2", 1), type: "REMINDER_2" },
+  ].filter((w) => w.hours > 0);
+
+  for (const w of windows) {
+    const startingSoon = await prisma.batch.findMany({
+      where: { startDate: { gt: now, lte: new Date(now.getTime() + w.hours * HOUR) } },
+      include: {
+        meeting: true,
+        registrations: { where: { paymentStatus: "PAID" }, include: { student: true } },
+      },
+    });
+    for (const batch of startingSoon) {
+      for (const reg of batch.registrations) {
+        const already = await prisma.emailLog.findFirst({
+          where: { registrationId: reg.id, type: w.type, status: { not: "FAILED" } },
+        });
+        if (already) continue;
+        const email = reminderEmail({
+          studentName: reg.student.name,
+          batchName: batch.batchName,
+          startDate: batch.startDate,
+          hoursBefore: w.hours,
+          meetingLink: batch.meeting?.meetingLink,
+          meetingProvider: batch.meeting?.provider,
+          whatsappGroupLink: batch.whatsappGroupLink,
+        });
+        await sendEmail({
+          to: reg.student.email,
+          subject: email.subject,
+          html: email.html,
+          type: w.type,
+          registrationId: reg.id,
+        });
+        reminders++;
+      }
     }
   }
 

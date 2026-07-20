@@ -8,6 +8,7 @@ const patchSchema = z.object({
   endDate: z.string().optional(),
   capacity: z.number().int().min(1).max(10000).optional(),
   status: z.enum(["OPEN", "RUNNING", "COMPLETED", "PAUSED", "CLOSED"]).optional(),
+  whatsappGroupLink: z.string().max(500).optional(),
 });
 
 export async function PATCH(

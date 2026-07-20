@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
       transactionId: d.transactionId || "Manual enrollment",
       meetingLink: batch.meeting?.meetingLink,
       meetingProvider: batch.meeting?.provider,
+      whatsappGroupLink: batch.whatsappGroupLink,
     });
     const result = await sendEmail({
       to: student.email,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Mail, CalendarClock, Video } from "lucide-react";
+import { CheckCircle2, Mail, CalendarClock, Video, MessageCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { formatDate, inr } from "@/lib/format";
 
@@ -69,6 +69,17 @@ export default async function SuccessPage({
               <span className="text-right font-mono text-xs">{payment?.transactionId ?? "—"}</span>
             </div>
           </div>
+
+          {batch.whatsappGroupLink && (
+            <a
+              href={batch.whatsappGroupLink}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-cta mt-6 w-full !bg-[#25D366] !shadow-[#25D366]/25"
+            >
+              <MessageCircle size={18} /> Join {batch.batchName} WhatsApp Group
+            </a>
+          )}
 
           <div className="mt-6 space-y-3 text-left">
             {next.map((n) => (

@@ -105,6 +105,7 @@ export async function completePaymentByOrder(
     transactionId,
     meetingLink: batch.meeting?.meetingLink,
     meetingProvider: batch.meeting?.provider,
+    whatsappGroupLink: batch.whatsappGroupLink,
   });
   await sendEmail({
     to: student.email,

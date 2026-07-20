@@ -401,6 +401,17 @@ export default function CmsPage() {
       />
 
       <SettingsSection
+        title="Reminder Emails"
+        hint="Hours before a batch starts to email paid students. Set a field to 0 to switch that reminder off. Requires the hourly cron to be scheduled."
+        settings={settings}
+        onSaved={load}
+        fields={[
+          { key: "reminderHours1", label: "First reminder (hours before)" },
+          { key: "reminderHours2", label: "Second reminder (hours before)" },
+        ]}
+      />
+
+      <SettingsSection
         title="Batch Automation"
         hint="How the system auto-creates future batches — no manual batch creation needed."
         settings={settings}
