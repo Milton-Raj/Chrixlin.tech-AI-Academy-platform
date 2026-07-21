@@ -54,7 +54,31 @@ export async function POST(req: NextRequest) {
     (!course.offerEndDate || course.offerEndDate > new Date());
   const amount = offerActive ? course.offerPrice : course.price;
 
-  const order = await createOrder(amount, `batch_${batchId}`);
+  // Razorpay's minimum is 100 paise (₹1). Guards against a misconfigured price.
+  if (amount * 100 < 100) {
+    return NextResponse.json({ error: "Course price is not configured correctly" }, { status: 400 });
+  }
+
+  // Create the Razorpay order. Surface auth problems (bad keys) and gateway
+  // outages as clean errors instead of an unhandled 500 stack trace.
+  let order;
+  try {
+    order = await createOrder(amount, `batch_${batchId}`);
+  } catch (e) {
+    const statusCode = (e as { statusCode?: number })?.statusCode;
+    if (statusCode === 401) {
+      console.error("Razorpay auth failed — check RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET");
+      return NextResponse.json(
+        { error: "Payment gateway is not configured correctly. Please try again later." },
+        { status: 401 }
+      );
+    }
+    console.error("Razorpay order creation failed:", e);
+    return NextResponse.json(
+      { error: "Could not start payment right now. Please try again in a moment." },
+      { status: 500 }
+    );
+  }
 
   const pending = await prisma.pendingEnrollment.create({
     data: {
