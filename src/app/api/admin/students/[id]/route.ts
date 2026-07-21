@@ -43,3 +43,47 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true, student });
 }
+
+/**
+ * Permanently delete a student and everything tied to them — registrations,
+ * payments and certificates all cascade (see schema onDelete: Cascade). Before
+ * deleting, release the seats their paid registrations were holding so batch
+ * counts stay accurate.
+ *
+ * EmailLog rows are kept: they are an audit trail of what was sent, not part of
+ * the student's profile, and they carry no foreign key to cascade.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const student = await prisma.student.findUnique({
+    where: { id },
+    include: { registrations: true },
+  });
+  if (!student) {
+    return NextResponse.json({ error: "Student not found" }, { status: 404 });
+  }
+
+  // Free up the seats held by paid registrations.
+  const paidByBatch = new Map<string, number>();
+  for (const reg of student.registrations) {
+    if (reg.paymentStatus === "PAID") {
+      paidByBatch.set(reg.batchId, (paidByBatch.get(reg.batchId) ?? 0) + 1);
+    }
+  }
+
+  await prisma.$transaction([
+    ...Array.from(paidByBatch.entries()).map(([batchId, count]) =>
+      prisma.batch.update({
+        where: { id: batchId },
+        data: { seatsFilled: { decrement: count } },
+      })
+    ),
+    prisma.student.delete({ where: { id } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
+}

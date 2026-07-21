@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Download, Pencil, X, Loader2, UserPlus, CheckCircle2 } from "lucide-react";
+import {
+  Search,
+  Download,
+  Pencil,
+  X,
+  Loader2,
+  UserPlus,
+  CheckCircle2,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 import { formatDate } from "@/lib/format";
 
 interface BatchOption {
@@ -287,6 +297,8 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<StudentRow | null>(null);
   const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState<StudentRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -324,6 +336,20 @@ export default function StudentsPage() {
     });
     setSaving(false);
     setEditing(null);
+    load();
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    const res = await fetch(`/api/admin/students/${deleting.id}`, { method: "DELETE" });
+    setDeleteBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Could not delete student");
+      return;
+    }
+    setDeleting(null);
     load();
   }
 
@@ -417,12 +443,21 @@ export default function StudentsPage() {
                   </td>
                   <td className="td text-xs">{formatDate(s.createdAt)}</td>
                   <td className="td">
-                    <button
-                      className="btn-sm bg-white/5 text-slate-300 hover:bg-white/10"
-                      onClick={() => setEditing({ ...s })}
-                    >
-                      <Pencil size={12} /> Edit
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button
+                        className="btn-sm bg-white/5 text-slate-300 hover:bg-white/10"
+                        onClick={() => setEditing({ ...s })}
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                      <button
+                        className="btn-sm bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                        onClick={() => setDeleting(s)}
+                        title="Delete student"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -430,6 +465,50 @@ export default function StudentsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="card w-full max-w-md !bg-navy-light">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-400">
+                <AlertTriangle size={20} />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold">Delete student?</h2>
+                <p className="mt-1 text-sm text-muted">
+                  This permanently removes <b className="text-white">{deleting.name}</b> (
+                  {deleting.email}) from the database.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-slate-300">
+              Their registration, payment records and any certificate are deleted too, and the seat
+              they held is released back to the batch. A published certificate&apos;s verification
+              link will stop working. This cannot be undone.
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                className="btn-outline flex-1 !py-2 text-sm"
+                onClick={() => setDeleting(null)}
+                disabled={deleteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-sm flex-1 justify-center !py-2 !text-sm bg-red-500 text-white hover:brightness-110"
+                onClick={confirmDelete}
+                disabled={deleteBusy}
+              >
+                {deleteBusy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editing && (
